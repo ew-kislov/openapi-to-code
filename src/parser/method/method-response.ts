@@ -1,13 +1,8 @@
-import { Method, MethodResponse, Schema } from "../types";
+import { InterfaceData, Method, MethodResponse, Schema } from "../types";
 import * as schemaParser from '../schema';
 import { capitalize } from "../utils";
 
-export interface GenerateResponseResult {
-    responseInterfaceCode: string | null;
-    responseTypename: string | null;
-}
-
-export function generateResponse(method: Method): GenerateResponseResult {
+export function generateResponse(method: Method): InterfaceData | null {
     const successCodes = Object.keys(method.responses).filter((code) => code[0] === '2');
     if (successCodes.length !== 1) {
         throw Error('Response must contain exactly 1 successfull(2**) code.');
@@ -18,13 +13,12 @@ export function generateResponse(method: Method): GenerateResponseResult {
 
     const schema = getSchemaFromResponse(response);
     if (!schema) {
-        return { responseInterfaceCode: null, responseTypename: null };
+        return null;
     }
 
     if (schemaParser.isRef(schema)) {
         return {
-            responseInterfaceCode: null,
-            responseTypename: schemaParser.generateSchema(schema)
+            typename: schemaParser.generateSchema(schema)
         };
     } else {
         const interfaceBodyCode = schemaParser.generateSchema(schema)
@@ -33,8 +27,8 @@ export function generateResponse(method: Method): GenerateResponseResult {
         const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
 
         return {
-            responseInterfaceCode: interfaceCode,
-            responseTypename: interfaceName
+            code: interfaceCode,
+            typename: interfaceName
         };
     }
 }

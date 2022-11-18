@@ -1,17 +1,16 @@
-import { Method } from "../types";
+import { InterfaceData, Method } from "../types";
 import * as schemaParser from '../schema';
 import { generateParamsIntoInterface } from "./method-params-common";
 import { capitalize } from "../utils";
 
 export interface GenerateRequestBodyParamsParams {
-    bodyInterfaceCode: string | null;
-    bodyTypename: string | null;
+    interfaceData?: InterfaceData
     bodyType: RequestBodyType;
 }
 
-export type RequestBodyType = 'formData' | 'json' | 'none';
+export type RequestBodyType = 'formData' | 'json';
 
-export function generateBodyParams(method: Method): GenerateRequestBodyParamsParams {
+export function generateBodyParams(method: Method): GenerateRequestBodyParamsParams | null {
     const requestBodyPreset = !!method.requestBody;
     const parametersPreset = method.parameters &&
         method.parameters.filter((param) => param.in === 'body' || param.in === 'formData').length !== 0
@@ -21,11 +20,7 @@ export function generateBodyParams(method: Method): GenerateRequestBodyParamsPar
     }
 
     if (!requestBodyPreset && !parametersPreset) {
-        return {
-            bodyInterfaceCode: null,
-            bodyTypename: null,
-            bodyType: 'none'
-        };
+        return null;
     }
 
     return requestBodyPreset
@@ -56,8 +51,9 @@ export function generateBodyParamsFromRequestBody(method: Method): GenerateReque
 
     if (schemaParser.isRef(schema)) {
         return {
-            bodyInterfaceCode: null,
-            bodyTypename: schemaParser.generateSchema(schema),
+            interfaceData: {
+                typename: schemaParser.generateSchema(schema)
+            },
             bodyType
         };
     } else {
@@ -67,8 +63,10 @@ export function generateBodyParamsFromRequestBody(method: Method): GenerateReque
         const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
 
         return {
-            bodyInterfaceCode: interfaceCode,
-            bodyTypename: interfaceName,
+            interfaceData: {
+                code: interfaceCode,
+                typename: interfaceName
+            },
             bodyType
         };
     }
@@ -100,8 +98,10 @@ export function generateBodyParamsFromParameters(method: Method): GenerateReques
     const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
 
     return {
-        bodyInterfaceCode: interfaceCode,
-        bodyTypename: interfaceName,
+        interfaceData: {
+            code: interfaceCode,
+            typename: interfaceName
+        },
         bodyType
     };
 }

@@ -1,13 +1,9 @@
 import { Method } from "../types";
 import * as schemaParser from '../schema';
 
-export interface GenerateRequestPathParamsParams {
-    pathParams: string[]; // each string has type 'someParam: somePrimitiveType'
-}
-
-export function generatePathParams(method: Method): GenerateRequestPathParamsParams {
+export function generatePathParams(method: Method): string[] {
     if (!method.parameters) {
-        return { pathParams: [] };
+        return [];
     }
 
     const pathParams = method.parameters
@@ -21,5 +17,5 @@ export function generatePathParams(method: Method): GenerateRequestPathParamsPar
             return `${param.name}: ${type}`;
         });
 
-    return { pathParams };
+    return pathParams;
 }

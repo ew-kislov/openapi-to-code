@@ -1,21 +1,16 @@
-import { Method } from "../types";
+import { InterfaceData, Method } from "../types";
 import * as schemaParser from '../schema';
 import { capitalize } from "../utils";
 import { generateParamsIntoInterface } from "./method-params-common";
 
-export interface GenerateRequestQueryParamsParams {
-    queryInterfaceCode: string | null;
-    queryTypename: string | null;
-}
-
-export function generateQueryParams(method: Method): GenerateRequestQueryParamsParams {
+export function generateQueryParams(method: Method): InterfaceData | null {
     if (!method.parameters) {
-        return { queryInterfaceCode: null, queryTypename: null };
+        return null;
     }
 
     const queryParams = method.parameters.filter((param) => param.in === 'query');
     if (!queryParams.length) {
-        return { queryInterfaceCode: null, queryTypename: null };
+        return null;
     }
 
     queryParams.forEach((param) => {
@@ -30,7 +25,7 @@ export function generateQueryParams(method: Method): GenerateRequestQueryParamsP
     const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
 
     return {
-        queryInterfaceCode: interfaceCode,
-        queryTypename: interfaceName
-    };
+        code: interfaceCode,
+        typename: interfaceName
+    }
 }

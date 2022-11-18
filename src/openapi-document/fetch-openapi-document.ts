@@ -1,9 +1,9 @@
 import axios from 'axios';
 import yaml from 'js-yaml';
 
-import { OpenApiDocument } from "../types";
+import { OpenApiDocument } from "./types";
 
-export async function parseOpenApiDocument(pathToOpenApi: string): Promise<OpenApiDocument> {
+export async function fetchOpenApiDocument(pathToOpenApi: string): Promise<OpenApiDocument> {
     const response = await axios({ method: 'GET', url: pathToOpenApi, transformResponse: (r) => r });
 
     const responseBody = await response.data;

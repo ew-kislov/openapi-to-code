@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { InterfaceData } from "../types";
 
 import { RequestBodyType } from "./method-body-params";
 
@@ -7,12 +8,12 @@ export interface GenerateMethodParams {
     methodPath: string;
     methodType: string;
     pathParams: string[];
-    queryTypename: string | null;
-    bodyTypename: string | null;
-    responseTypename: string | null;
+    query: InterfaceData | null | undefined;
+    body: InterfaceData | null | undefined;
+    response: InterfaceData | null | undefined;
     authHeaderName: string | null;
     apiKeys: { [paramName: string]: string };
-    bodyType: RequestBodyType;
+    bodyType: RequestBodyType | null | undefined;
 };
 
 const queryStringCode = 'const queryString = Object.entries(query).map(([key, value]) => `${key}=${value}`).join(\'\');\n';
@@ -22,8 +23,8 @@ export function generateMethod(params: GenerateMethodParams): string {
     const {
         methodName,
         methodType,
-        queryTypename,
-        responseTypename,
+        query,
+        response,
         bodyType
     } = params;
 
@@ -43,13 +44,15 @@ export function generateMethod(params: GenerateMethodParams): string {
         );
     `;
 
+    const responseType = response?.typename ? `types.${response.typename}` : 'void';
+
     const functionCode = `
-        async ${methodName}(${functionArgs}): Promise<${responseTypename ? `types.${responseTypename}` : 'void'}> {\n
-            ${queryTypename ? queryStringCode : ''}
+        async ${methodName}(${functionArgs}): Promise<${responseType}> {\n
+            ${query?.typename ? queryStringCode : ''}
             ${bodyType === 'formData' ? formDataCode : ''}
             ${fetchCode}\n
             const responseData = await response.json();\n
-            return responseData;\n
+            return responseData as ${responseType};\n
         }
     `;
 
@@ -59,16 +62,16 @@ export function generateMethod(params: GenerateMethodParams): string {
 function generateFunctionArgs(params: GenerateMethodParams): string {
     const {
         pathParams,
-        queryTypename,
-        bodyTypename,
+        query,
+        body,
         authHeaderName,
     } = params;
 
     const functionArgs = _.compact([
         authHeaderName ? 'token: string' : null,
         ...pathParams,
-        queryTypename ? `query: types.${queryTypename}` : null,
-        bodyTypename ? `body: types.${bodyTypename}` : null
+        query?.typename ? `query: types.${query.typename}` : null,
+        body?.typename ? `body: types.${body.typename}` : null
     ]);
 
     return functionArgs.join(', ');
@@ -77,15 +80,15 @@ function generateFunctionArgs(params: GenerateMethodParams): string {
 function generateFetchUrl(params: GenerateMethodParams): string {
     const {
         methodPath,
-        queryTypename
+        query
     } = params;
 
-    return '`${this.baseApiUrl}' + methodPath.replace('{', '${') + (queryTypename ? '?${queryString}`' : '`')
+    return '`${this.baseApiUrl}' + methodPath.replace('{', '${') + (query?.typename ? '?${queryString}`' : '`')
 }
 
 function generateHeadersObject(params: GenerateMethodParams): string {
     const {
-        bodyTypename,
+        body,
         authHeaderName,
         apiKeys,
         bodyType
@@ -93,9 +96,9 @@ function generateHeadersObject(params: GenerateMethodParams): string {
 
     const headers: { [headerName: string]: string } = { 'Accept': '\'application/json\'' };
 
-    if (bodyTypename && bodyType === 'formData') {
+    if (body?.typename && bodyType === 'formData') {
         headers['Content-type'] = '\'multipart/form-data\'';
-    } else if (bodyTypename && bodyType === 'json') {
+    } else if (body?.typename && bodyType === 'json') {
         headers['Content-type'] = '\'application/json\'';
     }
 
@@ -110,13 +113,13 @@ function generateHeadersObject(params: GenerateMethodParams): string {
 
 function generateBodyParam(params: GenerateMethodParams): string | null {
     const {
-        bodyTypename,
+        body,
         bodyType
     } = params;
 
-    if (bodyTypename && bodyType === 'formData') {
+    if (body?.typename && bodyType === 'formData') {
         return 'formData';
-    } else if (bodyTypename && bodyType === 'json') {
+    } else if (body?.typename && bodyType === 'json') {
         return 'JSON.stringify(body)';
     }
 

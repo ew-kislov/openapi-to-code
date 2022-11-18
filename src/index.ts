@@ -1,18 +1,26 @@
-import { GenerateClientFromOpenapiParams, OpenApiDocument } from './types';
-import { generateDefinitions } from './definition';
-import { generateMethods } from './method';
-import { parseOpenApiDocument } from './parser';
-import { generateFiles } from './files-generator';
+import { GenerateClientFromOpenapiParams } from './types';
+import { fetchOpenApiDocument, OpenApiDocument } from './openapi-document';
+import { generateDefinitions } from './parser/definition';
 
 export async function generateClient(params: GenerateClientFromOpenapiParams) {
-    const openapiDocument: OpenApiDocument = await parseOpenApiDocument(params.pathToOpenApi);
+    const openapiDocument: OpenApiDocument = await fetchOpenApiDocument(params.pathToOpenApi);
 
     if (!openapiDocument.paths || Object.keys(openapiDocument.paths).length === 0) {
         throw Error('Paths not found in OpenApi docment.');
     }
 
     const definitions = generateDefinitions(openapiDocument.definitions);
-    const methods = generateMethods(openapiDocument.paths, params.securityParams);
 
-    await generateFiles(params, definitions, methods);
+    console.log(definitions.interfaces[2].schema.properties);
 }
+
+generateClient({
+    pathToOpenApi: 'https://core.justdoluck.com/api-docs/swagger.json',
+    clientName: 'CoreClient',
+    mode: 'basic',
+    target: 'typescript-fetch',
+    securityParams: {
+        apiKeysMapping: { 'Api-Token': 'apiKey' },
+        authorizationHeader: 'Authorization'
+    }
+});
