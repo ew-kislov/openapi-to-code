@@ -1,127 +1,109 @@
 import _ from "lodash";
-import { InterfaceData } from "../types";
 
-import { RequestBodyType } from "./method-body-params";
+import { Paths, Method } from "../../openapi-document";
+import { ClientSecurityParams } from "../../types";
+import { ParsedInterface, ParsedMethod, MethodType } from "../types";
+import { parseBodyParams } from "./method-body-params";
+import { parsePathParams } from "./method-path-params";
+import { parseQueryParams } from "./method-query-params";
+import { parseResponse } from "./method-response";
+import { parseSecurity } from "./method-security";
 
-export interface GenerateMethodParams {
-    methodName: string;
-    methodPath: string;
-    methodType: string;
-    pathParams: string[];
-    query: InterfaceData | null | undefined;
-    body: InterfaceData | null | undefined;
-    response: InterfaceData | null | undefined;
-    authHeaderName: string | null;
-    apiKeys: { [paramName: string]: string };
-    bodyType: RequestBodyType | null | undefined;
+export interface ParseMethodResult {
+    method: ParsedMethod;
+    extraInterfaces: ParsedInterface[];
 };
 
-const queryStringCode = 'const queryString = Object.entries(query).map(([key, value]) => `${key}=${value}`).join(\'\');\n';
-const formDataCode = 'const formData = new FormData(); Object.entries(body).forEach(([key, value]) => formData.append(key, value));\n';
+export interface ParseRequestParamsParams {
+    pathParams: string[]; // each string has type 'someParam: somePrimitiveType'
+    queryInterface: ParsedInterface | null;
+    bodyInterface: ParsedInterface | null;
+    isFormData: boolean;
+}
 
-export function generateMethod(params: GenerateMethodParams): string {
-    const {
-        methodName,
-        methodType,
-        query,
-        response,
-        bodyType
-    } = params;
+export interface ParseMethodsResult {
+    methods: ParsedMethod[];
+    interfaces: ParsedInterface[];
+}
 
-    const functionArgs = generateFunctionArgs(params);
-    const fetchUrl = generateFetchUrl(params);
-    const headersObject = generateHeadersObject(params);
-    const bodyParam = generateBodyParam(params);
+const usedOperationIds: string[] = [];
 
-    let fetchCode = `
-        const response = await fetch(
-            ${fetchUrl},
-            {
-                method: '${methodType.toUpperCase()}',
-                headers: ${headersObject},
-                ${bodyParam ? `body: ${bodyParam}` : ''}
+export function parseMethods(paths: Paths, securityParams: ClientSecurityParams): ParseMethodsResult {
+    const methods: ParsedMethod[] = [];
+    let interfaces: ParsedInterface[] = [];
+
+    Object.entries(paths).forEach(([path, methodsByPath]) => {
+        Object.entries(methodsByPath).forEach(([methodType, methodDefinition]) => {
+            const { method, extraInterfaces } = parseMethod(path, methodType, methodDefinition, securityParams);
+
+            methods.push(method);
+            if (extraInterfaces.length !== 0) {
+                interfaces = interfaces.concat(extraInterfaces);
             }
-        );
-    `;
+        });
+    });
 
-    const responseType = response?.typename ? `types.${response.typename}` : 'void';
-
-    const functionCode = `
-        async ${methodName}(${functionArgs}): Promise<${responseType}> {\n
-            ${query?.typename ? queryStringCode : ''}
-            ${bodyType === 'formData' ? formDataCode : ''}
-            ${fetchCode}\n
-            const responseData = await response.json();\n
-            return responseData as ${responseType};\n
-        }
-    `;
-
-    return functionCode;
+    return {
+        methods,
+        interfaces
+    };
 }
 
-function generateFunctionArgs(params: GenerateMethodParams): string {
-    const {
-        pathParams,
-        query,
-        body,
-        authHeaderName,
-    } = params;
+export function parseMethod(
+    methodPath: string,
+    methodType: string,
+    methodDefinition: Method,
+    securityParams: ClientSecurityParams
+): ParseMethodResult {
+    if (!methodDefinition.operationId) {
+        throw Error(`Method ${methodType.toUpperCase()} ${methodPath} doesn't contain operationId property.`);
+    }
+    if (usedOperationIds.includes(methodDefinition.operationId)) {
+        throw Error(`Duplicate operationId '${methodDefinition.operationId}'. All methods must have unique operationId.`);
+    }
+    usedOperationIds.push(methodDefinition.operationId);
 
-    const functionArgs = _.compact([
-        authHeaderName ? 'token: string' : null,
-        ...pathParams,
-        query?.typename ? `query: types.${query.typename}` : null,
-        body?.typename ? `body: types.${body.typename}` : null
-    ]);
+    preprocessMethodParams(methodDefinition);
 
-    return functionArgs.join(', ');
-}
+    const pathParams = parsePathParams(methodDefinition);
+    const queryParams = parseQueryParams(methodDefinition);
+    const body = parseBodyParams(methodDefinition);
+    const response = parseResponse(methodDefinition);
+    const security = parseSecurity(methodDefinition, securityParams);
 
-function generateFetchUrl(params: GenerateMethodParams): string {
-    const {
+    const method: ParsedMethod = {
+        methodName: methodDefinition.operationId,
         methodPath,
-        query
-    } = params;
+        methodType: methodType as MethodType,
+        pathParams,
+        queryParams: queryParams.interfaceName,
+        body: body.interfaceName && body.bodyType ? { interface: body.interfaceName, type: body.bodyType } : null,
+        response: response.interfaceName,
+        security
+    };
 
-    return '`${this.baseApiUrl}' + methodPath.replace('{', '${') + (query?.typename ? '?${queryString}`' : '`')
+    return {
+        method,
+        extraInterfaces: _.compact([
+            queryParams.interface,
+            body.interface,
+            response.interface
+        ])
+    };
 }
 
-function generateHeadersObject(params: GenerateMethodParams): string {
-    const {
-        body,
-        authHeaderName,
-        apiKeys,
-        bodyType
-    } = params;
-
-    const headers: { [headerName: string]: string } = { 'Accept': '\'application/json\'' };
-
-    if (body?.typename && bodyType === 'formData') {
-        headers['Content-type'] = '\'multipart/form-data\'';
-    } else if (body?.typename && bodyType === 'json') {
-        headers['Content-type'] = '\'application/json\'';
+export function preprocessMethodParams(method: Method) {
+    if (!method.parameters) {
+        return;
     }
 
-    if (authHeaderName) {
-        headers[authHeaderName] = 'token';
-    }
-
-    Object.entries(apiKeys).forEach(([key, value]) => headers[key] = `this.${value}`);
-
-    return '{ ' + Object.entries(headers).map(([key, value]) => `'${key}': ${value}`).join(', ') + ' }';
-}
-
-function generateBodyParam(params: GenerateMethodParams): string | null {
-    const {
-        body,
-        bodyType
-    } = params;
-
-    if (body?.typename && bodyType === 'formData') {
-        return 'formData';
-    } else if (body?.typename && bodyType === 'json') {
-        return 'JSON.stringify(body)';
-    }
-
-    return null;
+    method.parameters.forEach((param) => {
+        if (!param.schema) {
+            param.schema = {
+                type: param.type
+            }
+        } else if (param.schema && !param.schema.type) {
+            param.schema.type = param.type;
+        }
+    });
 }

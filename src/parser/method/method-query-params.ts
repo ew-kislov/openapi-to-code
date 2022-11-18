@@ -1,31 +1,45 @@
-import { InterfaceData, Method } from "../types";
 import * as schemaParser from '../schema';
-import { capitalize } from "../utils";
-import { generateParamsIntoInterface } from "./method-params-common";
+import { capitalize } from "../../utils";
+import { parseRequestParams } from "./method-request-params";
+import { ParsedInterface } from '../types';
+import { Method } from '../../openapi-document';
 
-export function generateQueryParams(method: Method): InterfaceData | null {
+interface ParseQueryResult {
+    interfaceName: string | null;
+    interface: ParsedInterface | null;
+};
+
+export function parseQueryParams(method: Method): ParseQueryResult {
     if (!method.parameters) {
-        return null;
+        return {
+            interfaceName: null,
+            interface: null
+        };
     }
 
     const queryParams = method.parameters.filter((param) => param.in === 'query');
     if (!queryParams.length) {
-        return null;
+        return {
+            interfaceName: null,
+            interface: null
+        };
     }
 
-    queryParams.forEach((param) => {
-        if (schemaParser.isFile(param.schema) || schemaParser.isObject(param.schema)) {
+    const schema = parseRequestParams(queryParams);
+
+    Object.values(schema.properties!).forEach(({ schema }) => {
+        if (schema.customType || schema.inlineType === 'object' || schema.inlineType === 'file') {
             throw Error(`Error: query param cannot be file or object`);
         }
     });
 
-    const interfaceBodyCode = generateParamsIntoInterface(queryParams);
     const interfaceName = capitalize(method.operationId!) + 'QueryParams';
 
-    const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
-
     return {
-        code: interfaceCode,
-        typename: interfaceName
-    }
+        interfaceName,
+        interface: {
+            name: interfaceName,
+            schema
+        }
+    };
 }

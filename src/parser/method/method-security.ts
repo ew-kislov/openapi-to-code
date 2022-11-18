@@ -1,14 +1,11 @@
-import { ClientSecurityParams, Method } from "../types";
+import { Method } from "../../openapi-document";
+import { ClientSecurityParams } from "../../types";
+import { ParsedMethodSecurity } from "../types";
 
-export interface GenerateSecurityResult {
-    authHeaderName: string | null;
-    apiKeys: { [headerName: string]: string };
-}
-
-export function generateSecurity(method: Method, securityParams: ClientSecurityParams): GenerateSecurityResult {
+export function parseSecurity(method: Method, securityParams: ClientSecurityParams): ParsedMethodSecurity {
     if (!method.security || method.security.length === 0) {
         return {
-            authHeaderName: null,
+            authRequired: false,
             apiKeys: {}
         };
     }
@@ -28,7 +25,7 @@ export function generateSecurity(method: Method, securityParams: ClientSecurityP
     );
 
     return {
-        authHeaderName: authRequired ? securityParams.authorizationHeader : null,
+        authRequired,
         apiKeys
     };
 }

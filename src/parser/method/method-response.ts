@@ -1,8 +1,14 @@
-import { InterfaceData, Method, MethodResponse, Schema } from "../types";
+import { capitalize } from "../../utils";
+import { Method, MethodResponse, Schema } from '../../openapi-document';
+import { ParsedInterface } from '../types';
 import * as schemaParser from '../schema';
-import { capitalize } from "../utils";
 
-export function generateResponse(method: Method): InterfaceData | null {
+interface ParseResponseResult {
+    interfaceName: string | null;
+    interface: ParsedInterface | null;
+};
+
+export function parseResponse(method: Method): ParseResponseResult {
     const successCodes = Object.keys(method.responses).filter((code) => code[0] === '2');
     if (successCodes.length !== 1) {
         throw Error('Response must contain exactly 1 successfull(2**) code.');
@@ -13,22 +19,24 @@ export function generateResponse(method: Method): InterfaceData | null {
 
     const schema = getSchemaFromResponse(response);
     if (!schema) {
-        return null;
+        return {
+            interfaceName: null,
+            interface: null
+        };
     }
 
-    if (schemaParser.isRef(schema)) {
+    const parsedSchema = schemaParser.parseSchema(schema);
+
+    if (parsedSchema.customType) {
         return {
-            typename: schemaParser.generateSchema(schema)
+            interfaceName: parsedSchema.customType,
+            interface: null
         };
     } else {
-        const interfaceBodyCode = schemaParser.generateSchema(schema)
         const interfaceName = capitalize(method.operationId!) + 'Response';
-
-        const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
-
         return {
-            code: interfaceCode,
-            typename: interfaceName
+            interfaceName: interfaceName,
+            interface: { name: interfaceName, schema: parsedSchema }
         };
     }
 }

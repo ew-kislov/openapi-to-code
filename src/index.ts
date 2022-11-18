@@ -1,6 +1,7 @@
 import { GenerateClientFromOpenapiParams } from './types';
 import { fetchOpenApiDocument, OpenApiDocument } from './openapi-document';
-import { generateDefinitions } from './parser/definition';
+import { parseDefinitions } from './parser/definition';
+import { parseMethods } from './parser/method';
 
 export async function generateClient(params: GenerateClientFromOpenapiParams) {
     const openapiDocument: OpenApiDocument = await fetchOpenApiDocument(params.pathToOpenApi);
@@ -9,9 +10,8 @@ export async function generateClient(params: GenerateClientFromOpenapiParams) {
         throw Error('Paths not found in OpenApi docment.');
     }
 
-    const definitions = generateDefinitions(openapiDocument.definitions);
-
-    console.log(definitions.interfaces[2].schema.properties);
+    const definitions = parseDefinitions(openapiDocument.definitions);
+    const maethods = parseMethods(openapiDocument.paths, params.securityParams);
 }
 
 generateClient({

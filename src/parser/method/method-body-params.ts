@@ -1,16 +1,18 @@
-import { InterfaceData, Method } from "../types";
 import * as schemaParser from '../schema';
-import { generateParamsIntoInterface } from "./method-params-common";
-import { capitalize } from "../utils";
+import { parseRequestParams } from "./method-request-params";
+import { capitalize } from "../../utils";
+import { Method } from '../../openapi-document';
+import { ParsedInterface, ParsedSchema } from '../types';
 
-export interface GenerateRequestBodyParamsParams {
-    interfaceData?: InterfaceData
-    bodyType: RequestBodyType;
-}
+interface ParseResponseResult {
+    interfaceName: string | null;
+    interface: ParsedInterface | null;
+    bodyType: RequestBodyType | null
+};
 
 export type RequestBodyType = 'formData' | 'json';
 
-export function generateBodyParams(method: Method): GenerateRequestBodyParamsParams | null {
+export function parseBodyParams(method: Method): ParseResponseResult {
     const requestBodyPreset = !!method.requestBody;
     const parametersPreset = method.parameters &&
         method.parameters.filter((param) => param.in === 'body' || param.in === 'formData').length !== 0
@@ -20,15 +22,19 @@ export function generateBodyParams(method: Method): GenerateRequestBodyParamsPar
     }
 
     if (!requestBodyPreset && !parametersPreset) {
-        return null;
+        return {
+            interfaceName: null,
+            interface: null,
+            bodyType: null
+        };
     }
 
     return requestBodyPreset
-        ? generateBodyParamsFromRequestBody(method)
-        : generateBodyParamsFromParameters(method);
+        ? parseBodyParamsFromRequestBody(method)
+        : parseBodyParamsFromParameters(method);
 }
 
-export function generateBodyParamsFromRequestBody(method: Method): GenerateRequestBodyParamsParams {
+export function parseBodyParamsFromRequestBody(method: Method): ParseResponseResult {
     const mediaTypes = Object.keys(method.requestBody!.content);
     if (mediaTypes.length !== 1 || !['multipart/form-data', 'application/json'].includes(mediaTypes[0])) {
         throw Error(`Error: 'requestBody must contain one mediaType, either multipart/form-data or application/json'`);
@@ -36,43 +42,32 @@ export function generateBodyParamsFromRequestBody(method: Method): GenerateReque
 
     const mediaType = Object.keys(method.requestBody!.content)[0];
     const bodyType: RequestBodyType = (mediaType === 'multipart/form-data' ? 'formData' : 'json');
-    const schema = method.requestBody!.content[mediaType].schema;
 
-    /**
-     * TODO: check referenced schema to have no nested objects
-     */
-    if (mediaType === 'multipart/form-data' && schema.properties) {
-        Object.values(schema.properties).forEach((prop) => {
-            if (schemaParser.isObject(prop)) {
-                throw Error(`FormData parameter can't have nested objects`);
-            }
-        });
-    }
+    const schema = schemaParser.parseObject(method.requestBody!.content[mediaType].schema);
 
-    if (schemaParser.isRef(schema)) {
+    validateBodySchemaProperties(schema, bodyType);
+
+    if (schema.customType) {
         return {
-            interfaceData: {
-                typename: schemaParser.generateSchema(schema)
-            },
+            interfaceName: schema.customType,
+            interface: null,
             bodyType
         };
     } else {
-        const interfaceBodyCode = schemaParser.generateSchema(schema)
         const interfaceName = capitalize(method.operationId!) + 'BodyParams';
 
-        const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
-
         return {
-            interfaceData: {
-                code: interfaceCode,
-                typename: interfaceName
+            interfaceName,
+            interface: {
+                name: interfaceName,
+                schema
             },
             bodyType
         };
     }
 }
 
-export function generateBodyParamsFromParameters(method: Method): GenerateRequestBodyParamsParams {
+export function parseBodyParamsFromParameters(method: Method): ParseResponseResult {
     const formDataParams = method.parameters!.filter((param) => param.in === 'formData');
     const bodyParams = method.parameters!.filter((param) => param.in === 'body');
 
@@ -83,25 +78,33 @@ export function generateBodyParamsFromParameters(method: Method): GenerateReques
     const bodyType: RequestBodyType = formDataParams.length !== 0 ? 'formData' : 'json';
     const params = bodyType === 'formData' ? formDataParams : bodyParams;
 
-    params.forEach((param) => {
-        if (bodyType === 'formData' && param.schema.type === 'object') {
-            throw Error(`FormData parameter can't have nested objects`);
-        }
-        if (bodyType === 'json' && param.schema.type === 'file') {
-            throw Error(`File parameters are allowed only in formData parameters`);
-        }
-    });
+    const schema = parseRequestParams(params);
 
-    const interfaceBodyCode = generateParamsIntoInterface(params);
+    validateBodySchemaProperties(schema, bodyType);
+
     const interfaceName = capitalize(method.operationId!) + 'BodyParams';
 
-    const interfaceCode = `export interface ${interfaceName} ${interfaceBodyCode}`;
-
     return {
-        interfaceData: {
-            code: interfaceCode,
-            typename: interfaceName
+        interfaceName,
+        interface: {
+            name: interfaceName,
+            schema
         },
         bodyType
     };
+}
+
+function validateBodySchemaProperties(schema: ParsedSchema, bodyType: RequestBodyType) {
+    /**
+     * TODO: check referenced schema to have no nested objects
+     */
+
+    Object.values(schema.properties!).forEach((prop) => {
+        if (bodyType === 'formData' && prop.schema === 'object') {
+            throw Error(`FormData parameter can't have nested objects`);
+        }
+        if (bodyType === 'json' && prop.schema === 'file') {
+            throw Error(`File parameters are allowed only in formData parameters`);
+        }
+    });
 }

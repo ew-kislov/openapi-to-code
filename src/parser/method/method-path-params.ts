@@ -1,21 +1,24 @@
-import { Method } from "../types";
+import { Method } from '../../openapi-document';
+import { ParsedMethodPathParams, ParsedMethodPathParamType } from '../types';
 import * as schemaParser from '../schema';
 
-export function generatePathParams(method: Method): string[] {
+export function parsePathParams(method: Method): ParsedMethodPathParams[] {
     if (!method.parameters) {
         return [];
     }
 
-    const pathParams = method.parameters
+    return method.parameters
         .filter((param) => param.in === 'path')
         .map((param) => {
-            if (!schemaParser.isEnum(param.schema) && !schemaParser.isPrimitive(param.schema)) {
+            const schema = schemaParser.parseSchema(param.schema);
+
+            if (!schema.inlineType || !['string', 'number', 'integer', 'enum'].includes(schema.inlineType)) {
                 throw Error(`Error: path parameter must primitive type or enum.`);
             }
-            const type = schemaParser.generateSchema(param.schema);
 
-            return `${param.name}: ${type}`;
+            return {
+                name: param.name,
+                type: schema.inlineType as ParsedMethodPathParamType
+            };
         });
-
-    return pathParams;
 }

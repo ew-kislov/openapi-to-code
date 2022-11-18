@@ -1,45 +1,44 @@
 import { Schema } from '../../openapi-document';
-import { ParsedSchema } from './types';
+import { ParsedSchema } from '../types';
 
-export function generateSchema(schema: Schema, required: boolean): ParsedSchema {
+export function parseSchema(schema: Schema): ParsedSchema {
     if (isEnum(schema)) {
-        return generateEnum(schema, required);
+        return parseEnum(schema);
     } else if (isPrimitive(schema)) {
-        return generatePrimitive(schema, required)
+        return parsePrimitive(schema)
     } else if (isArray(schema)) {
-        return generateArray(schema, required);
+        return parseArray(schema);
     } else if (isFile(schema)) {
-        return generateFile(schema, required);
+        return parseFile();
     } else if (isObject(schema)) {
-        return generateObject(schema, required);
+        return parseObject(schema);
     } else if (isRef(schema)) {
-        return generateReference(schema, required);
+        return parseReference(schema);
     } else if (isUntypedSchema(schema)) {
-        return generateUntypedSchema(schema, required);
+        return parseUntypedSchema();
     } else {
         throw Error(`Could not determine type`);
     }
 }
 
-export function generateObject(definition: Schema, required: boolean): ParsedSchema {
+export function parseObject(definition: Schema): ParsedSchema {
     if (!definition.properties) {
-        return { inlineType: 'object', required, properties: [] };
+        return { inlineType: 'object', properties: {} };
     }
 
-    const properties = Object.entries(definition.properties!).map(([propName, prop]) => {
-        const schema = generateSchema(prop, required);
-        schema.required = definition.required ? definition.required.includes(propName) : false;
-        return schema;
+    const propertiesAsEntries = Object.entries(definition.properties!).map(([propName, prop]) => {
+        const schema = parseSchema(prop);
+        const required = definition.required ? definition.required.includes(propName) : false;
+        return [propName, { required, schema }];
     });
 
     return {
         inlineType: 'object',
-        required,
-        properties
+        properties: Object.fromEntries(propertiesAsEntries)
     };
 }
 
-export function generateEnum(schema: Schema, required: boolean): ParsedSchema {
+export function parseEnum(schema: Schema): ParsedSchema {
     /**
      * NOTE:
      * This is generally must not be parsed because it is error corresponding to OpenAPI semantics.
@@ -48,44 +47,41 @@ export function generateEnum(schema: Schema, required: boolean): ParsedSchema {
     if (schema.type === 'array') {
         return {
             inlineType: 'array',
-            required,
-            itemsSchema: { inlineType: 'enum', required: true, enum: schema.enum! }
+            itemsSchema: { inlineType: 'enum', enum: schema.enum! }
         };
     } else {
-        return { inlineType: 'enum', required, enum: schema.enum! };
+        return { inlineType: 'enum', enum: schema.enum! };
     }
 }
 
-export function generateArray(schema: Schema, required: boolean): ParsedSchema {
+export function parseArray(schema: Schema): ParsedSchema {
     if (!schema.items) {
         return {
             inlineType: 'array',
-            required,
-            itemsSchema: { inlineType: 'unknown', required: true }
+            itemsSchema: { inlineType: 'unknown' }
         };
     }
 
     return {
         inlineType: 'array',
-        required,
-        itemsSchema: generateSchema(schema.items, required)
+        itemsSchema: parseSchema(schema.items)
     };
 }
 
-export function generateReference(schema: Schema, required: boolean): ParsedSchema {
-    return { customType: schema.$ref!.split('/').pop() as string, required };
+export function parseReference(schema: Schema): ParsedSchema {
+    return { customType: schema.$ref!.split('/').pop() as string };
 }
 
-export function generatePrimitive(schema: Schema, required: boolean): ParsedSchema {
-    return { inlineType: schema.type, required };
+export function parsePrimitive(schema: Schema): ParsedSchema {
+    return { inlineType: schema.type };
 }
 
-export function generateFile(schema: Schema, required: boolean): ParsedSchema {
-    return { inlineType: 'file', required };
+export function parseFile(): ParsedSchema {
+    return { inlineType: 'file' };
 }
 
-export function generateUntypedSchema(schema: Schema | null | undefined, required: boolean): ParsedSchema {
-    return { inlineType: 'unknown', required };
+export function parseUntypedSchema(): ParsedSchema {
+    return { inlineType: 'unknown' };
 }
 
 // Type checkers
