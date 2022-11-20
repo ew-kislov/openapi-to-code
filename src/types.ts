@@ -16,16 +16,3 @@ export interface ClientSecurityParams {
 }
 
 export type StackTarget = 'typescript-fetch' | 'nodejs-typescript-fetch';
-
-/**
- * Internal generator types
- */
-
-export interface MethodData {
-    code: string;
-    path: string;
-    functionName: string;
-    queryTypename: string | null | undefined;
-    bodyTypename: string | null | undefined;
-    responseTypename: string | null | undefined;
-}

@@ -1,3 +1,8 @@
+export interface ParsedDocument {
+    methods: ParsedMethod[];
+    interfaces: ParsedInterface[];
+}
+
 export interface ParsedMethod {
     methodName: string;
     methodPath: string;

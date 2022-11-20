@@ -5,7 +5,7 @@
 
 {types_import}
 
-export class SomeClient {
+export class {client_name} {
     private readonly baseApiUrl: string;
     {api_keys_definitions}
 
