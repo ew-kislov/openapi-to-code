@@ -2,13 +2,15 @@
  * Generator interfaces
  */
 
-export interface GenerateClientFromOpenapiParams {
+export class GenerateClientFromOpenapiParams {
     pathToOpenApi: string;
     clientName: string;
     target: StackTarget;
-    mode: 'basic' | 'api-gateway' | 'inter-microservice'
+    mode?: GenerationMode;
     securityParams: ClientSecurityParams;
 };
+
+export type GenerationMode = 'basic' | 'api-gateway' | 'inter-microservice';
 
 export interface ClientSecurityParams {
     apiKeysMapping: { [headerName: string]: string };
