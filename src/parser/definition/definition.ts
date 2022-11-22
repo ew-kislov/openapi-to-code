@@ -1,6 +1,7 @@
 import { Schema, Definitions } from '../../openapi-document';
 import { ParsedInterface } from '../types';
 import * as schemaParser from '../schema';
+import { log, LogLevel, setGlobalContext } from '../../global-logger';
 
 export interface ParseDefenitionsResult {
     interfaces: ParsedInterface[];
@@ -19,8 +20,11 @@ export function parseDefinitions(definitions: Definitions | undefined): ParseDef
 }
 
 export function parseDefinition(definitionName: string, definition: Schema): ParsedInterface {
+    setGlobalContext({ definition: definitionName });
+
     if (!schemaParser.isObject(definition)) {
-        throw Error(`Definition ${definitionName} must have "object" type`);
+        log(`Definition ${definitionName} must have "object" type`, LogLevel.Error);
+        process.exit(1);
     }
 
     return {

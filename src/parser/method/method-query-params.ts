@@ -3,6 +3,7 @@ import { capitalize } from "../../utils";
 import { parseRequestParams } from "./method-request-params";
 import { ParsedInterface } from '../types';
 import { Method } from '../../openapi-document';
+import { log, LogLevel } from '../../global-logger';
 
 interface ParseQueryResult {
     interfaceName: string | null;
@@ -29,7 +30,8 @@ export function parseQueryParams(method: Method): ParseQueryResult {
 
     Object.values(schema.properties!).forEach(({ schema }) => {
         if (schema.customType || schema.inlineType === 'object' || schema.inlineType === 'file') {
-            throw Error(`Error: query param cannot be file or object`);
+            log(`Error: query param cannot be file or object`, LogLevel.Error);
+            process.exit(1);
         }
     });
 

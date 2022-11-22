@@ -3,6 +3,7 @@ import { parseRequestParams } from "./method-request-params";
 import { capitalize } from "../../utils";
 import { Method } from '../../openapi-document';
 import { ParsedInterface, ParsedSchema } from '../types';
+import { log, LogLevel } from '../../global-logger';
 
 interface ParseResponseResult {
     interfaceName: string | null;
@@ -18,7 +19,8 @@ export function parseBodyParams(method: Method): ParseResponseResult {
         method.parameters.filter((param) => param.in === 'body' || param.in === 'formData').length !== 0
 
     if (requestBodyPreset && parametersPreset) {
-        throw Error(`Error: body must be defined either in 'requestBody' or in params`);
+        log(`Error: body must be defined either in 'requestBody' or in params`, LogLevel.Error);
+        process.exit(1);
     }
 
     if (!requestBodyPreset && !parametersPreset) {
@@ -37,7 +39,8 @@ export function parseBodyParams(method: Method): ParseResponseResult {
 export function parseBodyParamsFromRequestBody(method: Method): ParseResponseResult {
     const mediaTypes = Object.keys(method.requestBody!.content);
     if (mediaTypes.length !== 1 || !['multipart/form-data', 'application/json'].includes(mediaTypes[0])) {
-        throw Error(`Error: 'requestBody must contain one mediaType, either multipart/form-data or application/json'`);
+        log(`Error: 'requestBody must contain one mediaType, either multipart/form-data or application/json'`, LogLevel.Error);
+        process.exit(1);
     }
 
     const mediaType = Object.keys(method.requestBody!.content)[0];
@@ -72,7 +75,8 @@ export function parseBodyParamsFromParameters(method: Method): ParseResponseResu
     const bodyParams = method.parameters!.filter((param) => param.in === 'body');
 
     if (formDataParams.length !== 0 && bodyParams.length !== 0) {
-        throw Error(`Method cannot contain both in-formdata and in-body parameters.`);
+        log(`Method cannot contain both in-formdata and in-body parameters.`, LogLevel.Error);
+        process.exit(1);
     }
 
     const bodyType: RequestBodyType = formDataParams.length !== 0 ? 'formData' : 'json';
@@ -101,10 +105,12 @@ function validateBodySchemaProperties(schema: ParsedSchema, bodyType: RequestBod
 
     Object.values(schema.properties!).forEach((prop) => {
         if (bodyType === 'formData' && prop.schema === 'object') {
-            throw Error(`FormData parameter can't have nested objects`);
+            log(`FormData parameter can't have nested objects`, LogLevel.Error);
+            process.exit(1);
         }
         if (bodyType === 'json' && prop.schema === 'file') {
-            throw Error(`File parameters are allowed only in formData parameters`);
+            log(`File parameters are allowed only in formData parameters`, LogLevel.Error);
+            process.exit(1);
         }
     });
 }

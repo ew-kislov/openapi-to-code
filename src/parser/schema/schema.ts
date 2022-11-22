@@ -1,3 +1,4 @@
+import { log, LogLevel } from '../../global-logger';
 import { Schema } from '../../openapi-document';
 import { ParsedSchema } from '../types';
 
@@ -17,12 +18,14 @@ export function parseSchema(schema: Schema): ParsedSchema {
     } else if (isUntypedSchema(schema)) {
         return parseUntypedSchema();
     } else {
-        throw Error(`Could not determine type`);
+        log(`Could not determine type`, LogLevel.Error);
+        process.exit(1);
     }
 }
 
 export function parseObject(definition: Schema): ParsedSchema {
     if (!definition.properties) {
+        log('Object must have "properties"', LogLevel.Warning);
         return { inlineType: 'object', properties: {} };
     }
 
@@ -39,6 +42,9 @@ export function parseObject(definition: Schema): ParsedSchema {
 }
 
 export function parseEnum(schema: Schema): ParsedSchema {
+    if (schema.type !== 'string') {
+        log('Enum property must have "type": "string"', LogLevel.Warning);
+    }
     /**
      * NOTE:
      * This is generally must not be parsed because it is error corresponding to OpenAPI semantics.
@@ -56,6 +62,7 @@ export function parseEnum(schema: Schema): ParsedSchema {
 
 export function parseArray(schema: Schema): ParsedSchema {
     if (!schema.items) {
+        log('Arrays must have "items" property', LogLevel.Warning);
         return {
             inlineType: 'array',
             itemsSchema: { inlineType: 'unknown' }
@@ -81,6 +88,8 @@ export function parseFile(): ParsedSchema {
 }
 
 export function parseUntypedSchema(): ParsedSchema {
+    log('Schema must have "type"', LogLevel.Warning);
+
     return { inlineType: 'unknown' };
 }
 
@@ -92,9 +101,6 @@ export function isRef(schema: Schema): boolean {
 }
 
 export function isEnum(schema: Schema): boolean {
-    if (schema.enum && schema.type !== 'string') {
-        console.warn(`(Warning) enum property should have "type": "string"`);
-    }
     return !!schema.enum;
 }
 

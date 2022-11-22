@@ -12,3 +12,14 @@ export async function generateClient(params: GenerateClientFromOpenapiParams) {
 
     await generateFromParsedDocument(documentWithMode, params);
 }
+
+generateClient({
+    pathToOpenApi: 'https://core.justdoluck.com/api-docs/swagger.json',
+    clientName: 'CoreClient',
+    mode: 'inter-microservice',
+    target: 'typescript-fetch',
+    securityParams: {
+        apiKeysMapping: { 'Api-Token': 'apiKey' },
+        authorizationHeader: 'Authorization'
+    }
+});

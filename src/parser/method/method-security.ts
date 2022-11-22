@@ -1,3 +1,4 @@
+import { log, LogLevel } from "../../global-logger";
 import { Method } from "../../openapi-document";
 import { ClientSecurityParams } from "../../types";
 import { ParsedMethodSecurity } from "../types";
@@ -15,7 +16,8 @@ export function parseSecurity(method: Method, securityParams: ClientSecurityPara
 
     securityHeaders.forEach((header) => {
         if (header !== securityParams.authorizationHeader && !expectedHeaders.includes(header)) {
-            throw Error(`Found security header '${header}' which is not mentonied in generator parameters.`);
+            log(`Found security header '${header}' which is not mentioned in generator parameters.`, LogLevel.Error);
+            process.exit(1);
         }
     });
 

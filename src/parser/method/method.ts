@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { log, LogLevel, setGlobalContext } from "../../global-logger";
 
 import { Paths, Method } from "../../openapi-document";
 import { ClientSecurityParams } from "../../types";
@@ -55,24 +56,40 @@ export function parseMethod(
     methodDefinition: Method,
     securityParams: ClientSecurityParams
 ): ParseMethodResult {
-    if (!methodDefinition.operationId) {
-        throw Error(`Method ${methodType.toUpperCase()} ${methodPath} doesn't contain operationId property.`);
+    setGlobalContext({});
+
+    const { operationId } = methodDefinition;
+
+    if (!operationId) {
+        log(`Method ${methodType.toUpperCase()} ${methodPath} doesn't contain operationId property.`, LogLevel.Error);
+        process.exit(1);
     }
-    if (usedOperationIds.includes(methodDefinition.operationId)) {
-        throw Error(`Duplicate operationId '${methodDefinition.operationId}'. All methods must have unique operationId.`);
+    if (usedOperationIds.includes(operationId)) {
+        log(`Duplicate operationId '${operationId}'. All methods must have unique operationId.`, LogLevel.Error);
+        process.exit(1);
     }
-    usedOperationIds.push(methodDefinition.operationId);
+
+    usedOperationIds.push(operationId);
 
     preprocessMethodParams(methodDefinition);
 
+    setGlobalContext({ operationId, in: 'path' });
     const pathParams = parsePathParams(methodDefinition);
+
+    setGlobalContext({ operationId, in: 'query' });
     const queryParams = parseQueryParams(methodDefinition);
+
+    setGlobalContext({ operationId, in: 'body' });
     const body = parseBodyParams(methodDefinition);
+
+    setGlobalContext({ operationId, in: 'response' });
     const response = parseResponse(methodDefinition);
+
+    setGlobalContext({ operationId, in: 'security' });
     const security = parseSecurity(methodDefinition, securityParams);
 
     const method: ParsedMethod = {
-        methodName: methodDefinition.operationId,
+        methodName: operationId,
         methodPath,
         methodType: methodType as MethodType,
         pathParams,

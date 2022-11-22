@@ -2,6 +2,7 @@ import { capitalize } from "../../utils";
 import { Method, MethodResponse, Schema } from '../../openapi-document';
 import { ParsedInterface } from '../types';
 import * as schemaParser from '../schema';
+import { log, LogLevel } from "../../global-logger";
 
 interface ParseResponseResult {
     interfaceName: string | null;
@@ -11,7 +12,8 @@ interface ParseResponseResult {
 export function parseResponse(method: Method): ParseResponseResult {
     const successCodes = Object.keys(method.responses).filter((code) => code[0] === '2');
     if (successCodes.length !== 1) {
-        throw Error('Response must contain exactly 1 successfull(2**) code.');
+        log('Response must contain exactly 1 successfull(2**) code.', LogLevel.Error);
+        process.exit(1);
     }
 
     const successCode = successCodes[0];
@@ -52,7 +54,8 @@ export function getSchemaFromResponse(response: MethodResponse): Schema | null {
 
     const responseMediaTypes = Object.keys(response.content);
     if (responseMediaTypes.length !== 1 || responseMediaTypes[0] !== 'application/json') {
-        throw Error('Response must have only application/json media type.');
+        log('Response must have only application/json media type.', LogLevel.Error);
+        process.exit(1);
     }
 
     return response.content['application/json'].schema;

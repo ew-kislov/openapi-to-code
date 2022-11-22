@@ -1,6 +1,7 @@
 import { Method } from '../../openapi-document';
 import { ParsedMethodPathParams, ParsedMethodPathParamType } from '../types';
 import * as schemaParser from '../schema';
+import { log, LogLevel } from '../../global-logger';
 
 export function parsePathParams(method: Method): ParsedMethodPathParams[] {
     if (!method.parameters) {
@@ -13,7 +14,8 @@ export function parsePathParams(method: Method): ParsedMethodPathParams[] {
             const schema = schemaParser.parseSchema(param.schema);
 
             if (!schema.inlineType || !['string', 'number', 'integer', 'enum'].includes(schema.inlineType)) {
-                throw Error(`Error: path parameter must primitive type or enum.`);
+                log(`Error: path parameter must primitive type or enum.`, LogLevel.Error);
+                process.exit(1);
             }
 
             return {
