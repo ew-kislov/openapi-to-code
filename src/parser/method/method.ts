@@ -64,10 +64,10 @@ export function parseMethod(
         log(`Method ${methodType.toUpperCase()} ${methodPath} doesn't contain operationId property.`, LogLevel.Error);
         process.exit(1);
     }
-    if (usedOperationIds.includes(operationId)) {
-        log(`Duplicate operationId '${operationId}'. All methods must have unique operationId.`, LogLevel.Error);
-        process.exit(1);
-    }
+    // if (usedOperationIds.includes(operationId)) {
+    //     log(`Duplicate operationId '${operationId}'. All methods must have unique operationId.`, LogLevel.Error);
+    //     process.exit(1);
+    // }
 
     usedOperationIds.push(operationId);
 

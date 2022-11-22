@@ -31,6 +31,7 @@ export function applyModeToParsedDocument(document: ParsedDocument): ParsedDocum
 
 export function getNestedInterfaces(interfaceName: string, interfaces: ParsedInterface[]): ParsedInterface[] {
     const totalInterfaces: ParsedInterface[] = [];
+    const totalInterfaceNames: string[] = [];
 
     const rootInterface = interfaces.find((item) => item.name === interfaceName);
     if (!rootInterface) {
@@ -49,13 +50,15 @@ export function getNestedInterfaces(interfaceName: string, interfaces: ParsedInt
 
         const nestedNames = Object.values((props))
             .filter((item) => item.schema.customType || item.schema.itemsSchema?.customType)
-            .map((item) => item.schema.customType ?? item.schema.itemsSchema?.customType);
+            .map((item) => item.schema.customType ?? item.schema.itemsSchema?.customType)
+            .filter((item) => !totalInterfaceNames.includes(item!));
 
         const nestedInterfaces = interfaces.filter((item) => nestedNames.includes(item.name));
 
         queue.push(...nestedInterfaces);
 
         totalInterfaces.push(current!);
+        totalInterfaceNames.push(current!.name)
     }
 
     return totalInterfaces;
