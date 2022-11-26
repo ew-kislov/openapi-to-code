@@ -82,6 +82,14 @@ export function parseBodyParamsFromParameters(method: Method): ParseResponseResu
     const bodyType: RequestBodyType = formDataParams.length !== 0 ? 'formData' : 'json';
     const params = bodyType === 'formData' ? formDataParams : bodyParams;
 
+    if (params.length === 1 && params[0].schema.$ref) {
+        return {
+            interfaceName: params[0].schema.$ref?.split('/')[2],
+            interface: null,
+            bodyType
+        };
+    }
+
     const schema = parseRequestParams(params);
 
     validateBodySchemaProperties(schema, bodyType);
