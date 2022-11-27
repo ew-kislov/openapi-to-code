@@ -79,7 +79,7 @@ function generateFetchUrl(method: ParsedMethod): string {
         queryParams
     } = method;
 
-    return '`${this.baseApiUrl}' + methodPath.replace('{', '${') + (queryParams ? '?${queryString}`' : '`')
+    return '`${this.baseApiUrl}' + methodPath.replace(/{/g, '${') + (queryParams ? '?${queryString}`' : '`')
 }
 
 function generateHeadersObject(method: ParsedMethod, params: GenerateClientFromOpenapiParams): string {
