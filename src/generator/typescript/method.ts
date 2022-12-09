@@ -38,15 +38,17 @@ export function generateMethodCode(method: ParsedMethod, params: GenerateClientF
         );
     `;
 
-    const responseType = response ? `types.${response}` : 'void';
-
     const functionCode = `
-        async ${methodName}(${functionArgs}): Promise<${responseType}> {\n
-            ${queryParams ? queryStringCode : ''}
-            ${body?.type === 'formData' ? formDataCode : ''}
-            ${fetchCode}\n
-            const responseData = await response.json();\n
-            return responseData as ${responseType};\n
+        async ${methodName}(${functionArgs}): Promise<${response ? `types.${response} | null` : 'void'}> {\n
+            try {\n
+                ${queryParams ? queryStringCode : ''}
+                ${body?.type === 'formData' ? formDataCode : ''}
+                ${fetchCode}\n
+                ${response ? `const responseData = await response.json();\n` : ''}
+                ${response ? `return responseData as types.${response};\n` : ''}
+            } catch (err: any) {\n
+                ${response ? 'return null;\n' : ''}
+            }\n
         }
     `;
 
