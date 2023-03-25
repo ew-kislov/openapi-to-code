@@ -1,0 +1,18 @@
+/**
+ * This file was auto-generated.
+ * It is highly recommended not to modify it.
+ */
+
+{types_import}
+
+export class {client_name} {
+    private readonly baseApiUrl: string;
+    {api_keys_definitions}
+
+    constructor(baseApiUrl: string, {api_keys_params}) {
+        this.baseApiUrl = baseApiUrl;
+        {api_keys_initialization}
+    }
+
+    {methods}
+}
