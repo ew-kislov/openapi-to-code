@@ -1,6 +1,12 @@
+import { AppError } from '../../core';
 import { log, LogLevel } from '../../global-logger';
 import { Schema } from '../../openapi-document';
 import { ParsedSchema, ParsedType } from '../types';
+
+export enum ParseSchemaErrorEnum {
+    ReferenceCantContainSpecialSymbols = '$ref can\'t contain special symbols',
+    ObjectPropertyCantContainSpecialSymbols = 'Object property name can\'t contain special symbols'
+};
 
 export function parseSchema(schema: Schema): ParsedSchema {
     if (isEnum(schema)) {
@@ -33,6 +39,10 @@ export function parseObject(definition: Schema): ParsedSchema {
     }
 
     const propertiesAsEntries = Object.entries(definition.properties!).map(([propName, prop]) => {
+        if (new RegExp(/[ `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/).test(propName)) {
+            throw new AppError(ParseSchemaErrorEnum.ObjectPropertyCantContainSpecialSymbols);
+        }
+
         const schema = parseSchema(prop);
         const required = definition.required ? definition.required.includes(propName) : false;
         return [propName, { required, schema }];
@@ -79,7 +89,11 @@ export function parseArray(schema: Schema): ParsedSchema {
 }
 
 export function parseReference(schema: Schema): ParsedSchema {
-    const customType = schema.$ref!.split('/').pop()!.replace(/'/gi, '');
+    const customType = schema.$ref!.split('/').pop() as string;
+
+    if (new RegExp(/[ `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/).test(customType)) {
+        throw new AppError(ParseSchemaErrorEnum.ReferenceCantContainSpecialSymbols);
+    }
 
     return { customType };
 }

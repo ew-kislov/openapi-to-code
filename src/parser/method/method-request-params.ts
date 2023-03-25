@@ -7,7 +7,8 @@ export enum ParseMethodRequestParamsErrorEnum {
     ParameterMustHaveName = '"parameters" item must have "name"',
     ParameterCantHaveBothTypeAndSchema = '"parameters" item can\'t have both "type" and "schema"',
     ArrayCanContainOnlyPrimitives = 'Array parameter can contain only primitive types(string, number, integer, boolean)',
-    UnsupportedTypeInParameter = 'Parameter "type" can contain only on of the following types: string, number, integer, boolean, file, array'
+    UnsupportedTypeInParameter = 'Parameter "type" can contain only on of the following types: string, number, integer, boolean, file, array',
+    RequestParameterCantContainSpecialSymbols = 'Request parameter can\'t contain special symbols'
 };
 
 export function isRequestParamSchema(params: MethodParameter): boolean {
@@ -31,6 +32,9 @@ export function parseRequestParams(params: MethodParameter[]): ParsedSchema {
     const propertiesAsEntries = params.map((param) => {
         if (!param.name) {
             throw new AppError(ParseMethodRequestParamsErrorEnum.ParameterMustHaveName);
+        }
+        if (new RegExp(/[ `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/).test(param.name)) {
+            throw new AppError(ParseMethodRequestParamsErrorEnum.RequestParameterCantContainSpecialSymbols);
         }
 
         const name = param.name;

@@ -1,7 +1,12 @@
 import { Schema, Definitions } from '../../openapi-document';
 import { ParsedInterface } from '../types';
 import * as schemaParser from '../schema';
-import { log, LogLevel, setGlobalContext } from '../../global-logger';
+import { setGlobalContext } from '../../global-logger';
+import { AppError } from '../../core';
+
+export enum ParseDefinitionErrorEnum {
+    DefinitionNameCantContainSpecialSymbols = 'Definition name can\'t contain special symbols'
+};
 
 export interface ParseDefenitionsResult {
     interfaces: ParsedInterface[];
@@ -19,18 +24,15 @@ export function parseDefinitions(definitions: Definitions | undefined): ParseDef
     return { interfaces };
 }
 
-export function parseDefinition(definitionNameRaw: string, definition: Schema): ParsedInterface {
-    const definitionName = definitionNameRaw.replace(/'/gi, '');
+export function parseDefinition(definitionName: string, definition: Schema): ParsedInterface {
+    if (new RegExp(/[ `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/).test(definitionName)) {
+        throw new AppError(ParseDefinitionErrorEnum.DefinitionNameCantContainSpecialSymbols);
+    }
 
     setGlobalContext({ definition: definitionName });
 
-    if (!schemaParser.isObject(definition)) {
-        log(`Definition ${definitionName} must have "object" type`, LogLevel.Error);
-        process.exit(1);
-    }
-
     return {
         name: definitionName,
-        schema: schemaParser.parseObject(definition),
+        schema: schemaParser.parseSchema(definition)
     };
 }

@@ -10,7 +10,7 @@ export function parseDocument(openapiDocument: OpenApiDocument, params: Generate
     }
 
     const parseDefinitionsResult = parseDefinitions(openapiDocument.definitions ?? openapiDocument?.components?.schemas);
-    const parseMethodsResult = parseMethods(openapiDocument.paths, params.securityParams, parseDefinitionsResult.interfaces);
+    const parseMethodsResult = parseMethods(openapiDocument.paths, params.securityParams ?? null, parseDefinitionsResult.interfaces);
 
     return {
         methods: parseMethodsResult.methods,

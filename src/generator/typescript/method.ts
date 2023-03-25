@@ -96,7 +96,7 @@ function generateHeadersObject(method: ParsedMethod, params: GenerateClientFromO
     }
 
     if (security.authRequired) {
-        headers[params.securityParams.authorizationHeader] = 'token';
+        headers[params.securityParams!.authorizationHeader!] = 'token';
     }
 
     Object.entries(security.apiKeys).forEach(([key, value]) => headers[key] = `this.${value}`);

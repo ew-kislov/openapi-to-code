@@ -29,7 +29,7 @@ export interface ParseMethodsResult {
 
 const usedOperationIds: string[] = [];
 
-export function parseMethods(paths: Paths, securityParams: ClientSecurityParams, documentInterfaces: ParsedInterface[]): ParseMethodsResult {
+export function parseMethods(paths: Paths, securityParams: ClientSecurityParams | null, documentInterfaces: ParsedInterface[]): ParseMethodsResult {
     const methods: ParsedMethod[] = [];
     let interfaces: ParsedInterface[] = [];
 
@@ -54,7 +54,7 @@ export function parseMethod(
     methodPath: string,
     methodType: string,
     methodDefinition: Method,
-    securityParams: ClientSecurityParams,
+    securityParams: ClientSecurityParams | null,
     documentInterfaces: ParsedInterface[]
 ): ParseMethodResult {
     setGlobalContext({});

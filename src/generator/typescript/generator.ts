@@ -43,7 +43,7 @@ async function generateIndexFile(
 
     const methodsAsString = methods.map((method) => method).join('\n\n');
 
-    const apiKeyNames = Object.values(params.securityParams.apiKeysMapping);
+    const apiKeyNames = Object.values(params.securityParams?.apiKeysMapping ?? {});
 
     const apiKeysDefinitions = apiKeyNames.map((key) => `private readonly ${key}: string`).join('\n');
     const apiKeysParams = apiKeyNames.map((key) => `${key}: string`).join(', ');

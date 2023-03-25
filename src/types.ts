@@ -7,14 +7,14 @@ export class GenerateClientFromOpenapiParams {
     clientName: string;
     target: StackTarget;
     mode?: GenerationMode;
-    securityParams: ClientSecurityParams;
+    securityParams?: ClientSecurityParams;
 };
 
 export type GenerationMode = 'basic' | 'api-gateway' | 'inter-microservice';
 
 export interface ClientSecurityParams {
-    apiKeysMapping: { [headerName: string]: string };
-    authorizationHeader: string;
+    apiKeysMapping?: { [headerName: string]: string };
+    authorizationHeader?: string;
 }
 
 export type StackTarget = 'typescript-fetch' | 'nodejs-typescript-fetch';
