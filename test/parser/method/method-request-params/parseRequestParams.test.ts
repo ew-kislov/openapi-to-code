@@ -69,10 +69,35 @@ describe('Method request "parameters"', () => {
       {
         "name": "reason",
         "in": "query"
-      }
+      },
     ];
 
     expect(() => parseRequestParams(input))
       .toThrowError(new AppError(ParseMethodRequestParamsErrorEnum.ParameterMustHaveName));
+  });
+
+  it('Throws an error if at least one parameter name contains special symbols', () => {
+    const input: MethodParameter[] = [
+      {
+        "name": "id",
+        "in": "query",
+        "type": "integer",
+        "required": true
+      },
+      {
+        "name": "time.seconds",
+        "in": "query",
+        "type": "integer",
+        "description": "Accepted",
+        "required": false
+      } as MethodParameter,
+      {
+        "name": "reason",
+        "in": "query"
+      },
+    ];
+
+    expect(() => parseRequestParams(input))
+      .toThrowError(new AppError(ParseMethodRequestParamsErrorEnum.RequestParameterCantContainSpecialSymbols));
   });
 });
