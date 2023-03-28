@@ -1,5 +1,6 @@
 import _ from "lodash";
-import { log, LogLevel, setGlobalContext } from "../../global-logger";
+import { AppError } from "../../core";
+import { setGlobalContext } from "../../global-logger";
 
 import { Paths, Method } from "../../openapi-document";
 import { ClientSecurityParams } from "../../types";
@@ -9,6 +10,14 @@ import { parsePathParams } from "./method-path-params";
 import { parseQueryParams } from "./method-query-params";
 import { parseResponse } from "./method-response";
 import { parseSecurity } from "./method-security";
+
+export interface ParseMethodParams {
+    methodPath: string;
+    methodType: MethodType;
+    methodDefinition: Method;
+    securityParams: ClientSecurityParams | null;
+    documentInterfaces: ParsedInterface[];
+};
 
 export interface ParseMethodResult {
     method: ParsedMethod;
@@ -20,22 +29,44 @@ export interface ParseRequestParamsParams {
     queryInterface: ParsedInterface | null;
     bodyInterface: ParsedInterface | null;
     isFormData: boolean;
-}
+};
 
 export interface ParseMethodsResult {
     methods: ParsedMethod[];
     interfaces: ParsedInterface[];
-}
+};
 
-const usedOperationIds: string[] = [];
+export enum ParseMethodErrorEnum {
+    MethodMustContainOperationId = 'Method must contain operationId property',
+    MethodOperationIdMustBeUnique = 'Method must contain unique "operationId" property'
+};
 
 export function parseMethods(paths: Paths, securityParams: ClientSecurityParams | null, documentInterfaces: ParsedInterface[]): ParseMethodsResult {
     const methods: ParsedMethod[] = [];
     let interfaces: ParsedInterface[] = [];
 
-    Object.entries(paths).forEach(([path, methodsByPath]) => {
+    Object.entries(paths).forEach(([methodPath, methodsByPath]) => {
         Object.entries(methodsByPath).forEach(([methodType, methodDefinition]) => {
-            const { method, extraInterfaces } = parseMethod(path, methodType, methodDefinition, securityParams, documentInterfaces);
+            const usedOperationIds: string[] = [];
+
+            const operationId = methodDefinition.operationId;
+
+            if (!operationId) {
+                throw new AppError(ParseMethodErrorEnum.MethodMustContainOperationId);
+            }
+            if (usedOperationIds.includes(operationId)) {
+                throw new AppError(ParseMethodErrorEnum.MethodOperationIdMustBeUnique);
+            }
+
+            usedOperationIds.push(operationId);
+
+            const { method, extraInterfaces } = parseMethod({
+                methodPath,
+                methodType: methodType as MethodType,
+                methodDefinition,
+                securityParams,
+                documentInterfaces
+            });
 
             methods.push(method);
             if (extraInterfaces.length !== 0) {
@@ -50,28 +81,12 @@ export function parseMethods(paths: Paths, securityParams: ClientSecurityParams 
     };
 }
 
-export function parseMethod(
-    methodPath: string,
-    methodType: string,
-    methodDefinition: Method,
-    securityParams: ClientSecurityParams | null,
-    documentInterfaces: ParsedInterface[]
-): ParseMethodResult {
+export function parseMethod(params: ParseMethodParams): ParseMethodResult {
+    const { methodPath, methodType, methodDefinition, securityParams, documentInterfaces } = params;
+
     setGlobalContext({});
 
     const operationId = methodDefinition.operationId;
-
-    if (!operationId) {
-        log(`Method ${methodType.toUpperCase()} ${methodPath} doesn't contain operationId property.`, LogLevel.Error);
-        process.exit(1);
-    }
-
-    if (usedOperationIds.includes(operationId)) {
-        log(`Duplicate operationId '${operationId}'. All methods must have unique operationId.`, LogLevel.Error);
-        process.exit(1);
-    }
-
-    usedOperationIds.push(operationId);
 
     setGlobalContext({ operationId, in: 'path' });
     const pathParams = parsePathParams(methodDefinition);
