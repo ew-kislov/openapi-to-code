@@ -1,4 +1,4 @@
-# openapi-to-code
+# openapi-to-client
 
 ## Example of usage
 
